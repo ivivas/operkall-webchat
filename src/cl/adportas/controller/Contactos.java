@@ -70,8 +70,8 @@ public final class Contactos {
                                         Conexion conAux = new Conexion();
                                         try {
                                             conAux.conectar();
-                                            conAux.contruirSQL("select * from sesiones where fk_id_usuario in ( "
-                                                    + "select id_usuario from grupo_usuario where id_grupo = " + id_grupo_receptor + " "
+                                            conAux.contruirSQL("select * from sesiones_chat where fk_id_usuario in ( "
+                                                    + "select id_usuario from grupo_usuario_chat where id_grupo = " + id_grupo_receptor + " "
                                                     + ") and fk_id_usuario != " + id_usuario_emisor + ";");
                                             conAux.ejecutarSQLBusqueda();
                                             while (conAux.getRs().next()) {
@@ -118,11 +118,11 @@ public final class Contactos {
                                         Conexion conAuxACD = new Conexion();
                                         try {
                                             conAuxACD.conectar();
-                                            conAuxACD.contruirSQL("update usuarios set estado = 2 where id_usuario in (select id_usuario from usuarios where estado = 1 order by ultima_conexion asc limit 1) returning id_usuario, usuario");
+                                            conAuxACD.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id, usuario_operkall");
                                             conAuxACD.ejecutarSQLBusqueda();
                                             while (conAuxACD.getRs().next()) {
-                                                id_ejecutivoACD = conAuxACD.getRs().getInt("id_usuario") + "";
-                                                nombre_ejecutivoACD = conAuxACD.getRs().getString("usuario") != null ? conAuxACD.getRs().getString("usuario").trim() : "S/A";
+                                                id_ejecutivoACD = conAuxACD.getRs().getInt("id") + "";
+                                                nombre_ejecutivoACD = conAuxACD.getRs().getString("usuario_operkall") != null ? conAuxACD.getRs().getString("usuario_operkall").trim() : "S/A";
                                             }
                                         } catch (Exception e) {
                                             logger.error(e.toString());
@@ -137,7 +137,7 @@ public final class Contactos {
 //                                    String id_usuarioACD = "-1";
                                         try {
                                             con.conectar();
-                                            con.contruirSQL("update sesiones set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
+                                            con.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
                                             con.getPst().setString(1, nombreUsuarioClienteWeb);
                                             con.getPst().setInt(2, 3);
                                             con.getPst().setString(3, direccion_ip);
@@ -335,7 +335,7 @@ public final class Contactos {
         try {
             Conexion con = new Conexion();
             con.conectar();
-            con.contruirSQL("update usuarios WHERE direccion_ip = '" + (this.direccion_ip != null ? this.direccion_ip.trim() : "") + "' and puerto = '" + (this.puerto != null ? this.puerto.trim() : "") + "' ;");
+            con.contruirSQL("update secretaria WHERE direccion_ip = '" + (this.direccion_ip != null ? this.direccion_ip.trim() : "") + "' and puerto = '" + (this.puerto != null ? this.puerto.trim() : "") + "' ;");
             con.ejecutarSQL();
             logger.debug("SQL: " + con.getPst().toString());
             con.cerrarConexiones();
@@ -384,7 +384,7 @@ public final class Contactos {
         Conexion conAux = new Conexion();
         try {
             conAux.conectar();
-            conAux.contruirSQL(" select * from sesiones where fk_id_usuario = " + idReceptor + " and (tipo_sesion != 3 or tipo_sesion is null );");
+            conAux.contruirSQL(" select * from sesiones_chat where fk_id_usuario = " + idReceptor + " and (tipo_sesion != 3 or tipo_sesion is null );");
             conAux.ejecutarSQLBusqueda();
             while (conAux.getRs().next()) {
                 String direccion_ipAUX = conAux.getRs().getString("direccion_ip") != null ? conAux.getRs().getString("direccion_ip").trim() : "";
@@ -417,11 +417,11 @@ public final class Contactos {
         Conexion con = new Conexion();
         try {
             con.conectar();
-            con.contruirSQL("update usuarios set estado = 2 where id_usuario in (select id_usuario from usuarios where estado = 1 order by ultima_conexion asc limit 1) returning id_usuario");
+            con.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id");
 //            con.contruirSQL("select id_usuario from usuarios where estado = 1 order by ultima_conexion asc limit 1");
             con.ejecutarSQLBusqueda();
             while (con.getRs().next()) {
-                id_usuarioEjecutivo = con.getRs().getInt("id_usuario");
+                id_usuarioEjecutivo = con.getRs().getInt("id");
             }
         } catch (Exception e) {
             logger.error(e.toString());
@@ -436,7 +436,7 @@ public final class Contactos {
         try {
             Conexion con = new Conexion();
             con.conectar();
-            con.contruirSQL("delete from sesiones WHERE direccion_ip = '" + (this.direccion_ip != null ? this.direccion_ip.trim() : "") + "' and puerto = '" + (this.puerto != null ? this.puerto.trim() : "") + "' ;");
+            con.contruirSQL("delete from sesiones_chat where direccion_ip = '" + (this.direccion_ip != null ? this.direccion_ip.trim() : "") + "' and puerto = '" + (this.puerto != null ? this.puerto.trim() : "") + "' ;");
             con.ejecutarSQL();
             //logger.debug("SQL: " + con.getPst().toString());
             con.cerrarConexiones();
@@ -451,8 +451,8 @@ public final class Contactos {
         logger.debug("Actualizando tabla usuarios por desconexion. Estado: " + estado + ", IdUsuario: " + id_ejecutivoACD);
         Conexion con = new Conexion();
         con.conectar();
-        con.contruirSQL("update usuarios SET estado = " + estado + " , motivo_desconexion = '" + mensaje + "' "
-                + "where id_usuario = " + id_ejecutivoACD + " ;");
+        con.contruirSQL("update secretaria set estado_chat = " + estado + " , motivo_desconexion_chat = '" + mensaje + "' "
+                + "where id = " + id_ejecutivoACD + " ;");
         con.ejecutarSQL();
         con.cerrarConexiones();
     }

@@ -28,7 +28,8 @@ public class Conexion {
     public void conectar() {
         try {
             Class.forName("org.postgresql.Driver").newInstance();
-            conexion = DriverManager.getConnection("jdbc:postgresql://192.168.100.91:5432/messenger_chat_kall", "postgres", "adp2011");
+            //conexion = DriverManager.getConnection("jdbc:postgresql://192.168.100.91:5432/messenger_chat_kall", "postgres", "adp2011");
+            conexion = DriverManager.getConnection("jdbc:postgresql://192.168.100.132:5432/AcdkallControl_contact", "postgres", "adp2015");
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | SQLException e) {
             logger.error(e.toString());
         }

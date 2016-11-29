@@ -57,7 +57,7 @@ public final class Servidor {
         Conexion con = new Conexion();
         try {
             con.conectar();
-            con.contruirSQL("SELECT * FROM sesiones WHERE tipo_sesion = 3;");
+            con.contruirSQL("SELECT * FROM sesiones_chat WHERE tipo_sesion = 3;");
             con.ejecutarSQLBusqueda();
             while(con.getRs().next()){
                 String id_contraparte_final = con.getRs().getString("direccion_ip") + "_" + con.getRs().getString("puerto");
@@ -76,7 +76,7 @@ public final class Servidor {
         Conexion con = new Conexion();
         try {
             con.conectar();
-            con.contruirSQL("INSERT INTO sesiones (estado, direccion_ip, puerto, fecha_activo) VALUES (?, ?, ?, 'now()');");
+            con.contruirSQL("INSERT INTO sesiones_chat (estado, direccion_ip, puerto, fecha_activo) VALUES (?, ?, ?, 'now()');");
             con.getPst().setInt(1, 0);
             con.getPst().setString(2, direccion_ip_usuario);
             con.getPst().setString(3, puerto_usuario);
