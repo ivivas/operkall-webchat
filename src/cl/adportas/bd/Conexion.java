@@ -48,6 +48,7 @@ public class Conexion {
             this.rs = this.pst.executeQuery();
         } catch (Exception e) {
             logger.error(e.toString());
+            logger.debug("Query: " + pst.toString());
         }
     }
 
@@ -64,6 +65,7 @@ public class Conexion {
             this.pst.executeUpdate();
         } catch (Exception e) {
             logger.error(e.toString());
+            logger.debug("Query: " + pst.toString());
         }
     }
 

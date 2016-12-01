@@ -118,11 +118,11 @@ public final class Contactos {
                                         Conexion conAuxACD = new Conexion();
                                         try {
                                             conAuxACD.conectar();
-                                            conAuxACD.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id, usuario_operkall");
+                                            conAuxACD.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id, nombre");
                                             conAuxACD.ejecutarSQLBusqueda();
                                             while (conAuxACD.getRs().next()) {
                                                 id_ejecutivoACD = conAuxACD.getRs().getInt("id") + "";
-                                                nombre_ejecutivoACD = conAuxACD.getRs().getString("usuario_operkall") != null ? conAuxACD.getRs().getString("usuario_operkall").trim() : "S/A";
+                                                nombre_ejecutivoACD = conAuxACD.getRs().getString("nombre") != null ? conAuxACD.getRs().getString("nombre").trim() : "S/A";
                                             }
                                         } catch (Exception e) {
                                             logger.error(e.toString());
