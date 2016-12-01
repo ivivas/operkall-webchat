@@ -13,7 +13,8 @@
         <!-- <link href="bootstrap/css/bootstrap-theme.min.css" rel="stylesheet"> -->
         
     </head>
-    <body>     
+    
+    <body onbeforeunload="ConfirmClose()" onunload="HandleOnClose()">     
         <div id="msg-post">
         </div>
         <div style="width: 1366px; height: 80px; background-color: #f5f5f5; float: top;">
@@ -80,10 +81,6 @@
         <script src="bootstrap-3.3.7/js/bootstrap.min.js"></script>
         <script language="javascript"  type="text/javascript" >
             $(document).ready(function () {
-                $(window).bind("beforeunload", function() { 
-                    alert("Saliendo de ventana");
-                });
-                
                 $("#btnEnviarMensajeChat").click(function () {
                     var nombreClienteWeb = $("#txtNombre").val();
                     var areaMensajeChatWeb = $("#areaMensajeChat").val();
@@ -103,12 +100,6 @@
                     });
                 });
                 
-                $("#btnTerminoChat").click(function () {
-                    var nombreClienteWeb = $("#txtNombre").val();
-                    $("#nombreClienteWeb").val(nombreClienteWeb);
-                });
-                
-
                 $("#btnInicioChat").click(function () {
                     var nombreClienteWeb = $("#txtNombre").val();
 //                    var areaMensajeChatWeb = $("#areaMensajeChat").val();
@@ -170,7 +161,7 @@
                 });
 
             });
-            
+               
             function validarNumero(event) {
                 if (event.keyCode < 48 || event.keyCode > 57) {
                     event.returnValue = false;
