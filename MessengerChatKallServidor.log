@@ -1,7 +1,0 @@
-2016-11-29 15:10:18.684 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.lambda$new$0(Servidor.java:32)]] INFO : Iniciando ServerSocket[addr=0.0.0.0/0.0.0.0,localport=9000]
-2016-11-29 15:10:18.687 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.lambda$new$0(Servidor.java:34)]] INFO : Esperando peticiones de conexion al socket 
-2016-11-29 15:10:54.432 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.lambda$new$0(Servidor.java:36)]] INFO : Peticion de cliente recibida
-2016-11-29 15:10:54.433 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.lambda$new$0(Servidor.java:41)]] INFO : verificando si el cliente existe previamente... 127.0.0.1_60787
-2016-11-29 15:10:54.443 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.insertarSesionUsuario(Servidor.java:75)]] DEBUG: Insertando session: 127.0.0.1, 60787
-2016-11-29 15:10:54.651 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.lambda$new$0(Servidor.java:46)]] INFO : Nuevo cliente agregado: 127.0.0.1_60787
-2016-11-29 15:10:54.653 [Thread: Thread-1] [[messengerchatkallservidor.Servidor.lambda$new$0(Servidor.java:34)]] INFO : Esperando peticiones de conexion al socket 

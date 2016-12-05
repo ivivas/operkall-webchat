@@ -46,6 +46,7 @@ public class Conexion {
     public void ejecutarSQLBusqueda() {
         try {
             this.rs = this.pst.executeQuery();
+            logger.debug("Query: " + pst.toString());
         } catch (Exception e) {
             logger.error(e.toString());
             logger.debug("Query: " + pst.toString());
