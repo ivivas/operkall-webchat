@@ -14,7 +14,7 @@
         
     </head>
     
-    <body onbeforeunload="ConfirmClose()" onunload="HandleOnClose()">     
+    <body>     
         <div id="msg-post">
         </div>
         <div style="width: 1366px; height: 80px; background-color: #f5f5f5; float: top;">
@@ -100,6 +100,21 @@
                     });
                 });
                 
+                $("#btnTerminoChat").click(function () {
+                    var nombreClienteWeb = $("#txtNombre").val();                    
+                    $.ajax({//Comunicación jQuery hacia JSP
+                        type: "POST",
+                        url: "Mensaje",
+                        data: "nombreClienteWeb=" + nombreClienteWeb,
+                        success: function (msg) {
+                            
+                        },
+                        error: function (xml, msg) {
+                            
+                        }
+                    });
+                });
+                
                 $("#btnInicioChat").click(function () {
                     var nombreClienteWeb = $("#txtNombre").val();
 //                    var areaMensajeChatWeb = $("#areaMensajeChat").val();
@@ -112,6 +127,7 @@
                             var altoAreaText = document.getElementById('areaChat');
                             $("#areaChat").scrollTop(altoAreaText.scrollHeight);
                             $("#areaMensajeChat").val("");
+                            $("#nombreClienteWeb").val(nombreClienteWeb);
                         },
                         error: function (xml, msg) {
                             $("#areaChat").html("Error: " + msg);

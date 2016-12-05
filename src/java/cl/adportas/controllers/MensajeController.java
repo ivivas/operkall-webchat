@@ -40,7 +40,8 @@ public class MensajeController extends HttpServlet {
             if (request.getSession().getAttribute("socketUsuarioWeb") != null) {
                 //logger.debug("socketUsuarioWeb not null");
                 socketUsuarioWeb = (SocketUsuarioWeb) request.getSession().getAttribute("socketUsuarioWeb");
-            } else if (request.getParameter("nuevaConexion") != null) {//Recordar cambiar el tipo de solicitud, ya que por sesion a cada rato enviaria una nueva conexion y creara una diferente....
+            } 
+            else if (request.getParameter("nuevaConexion") != null) {//Recordar cambiar el tipo de solicitud, ya que por sesion a cada rato enviaria una nueva conexion y creara una diferente....
                 logger.debug("Nueva conexion: " + request.getParameter("nombreClienteWeb"));
                 socketUsuarioWeb = new SocketUsuarioWeb(request.getSession().getId());
                 socketUsuarioWeb.enviarMensajes("conexionNuevaClienteWeb_#_" + request.getParameter("nombreClienteWeb"));
