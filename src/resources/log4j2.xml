@@ -22,7 +22,7 @@
         </File>
         -->
         
-        <RollingFile name="MyRollingFile" fileName="${logPath}/messengerChatKall_Servidor.log" filePattern="${logPath}/rollingFile_n%i-%d{yyyy-MM-dd}.log">
+        <RollingFile name="MyRollingFile" fileName="${logPath}/messengerChatKall_Servidor.log" filePattern="${logPath}/messengerChatKall_Servidor_n%i-%d{yyyy-MM-dd}.log">
             <PatternLayout>
                 <pattern>%d{yyy-MM-dd HH:mm:ss.SSS} [Thread: %t] [%l] %-5level: %msg%n</pattern>
             </PatternLayout>
