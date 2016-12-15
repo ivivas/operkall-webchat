@@ -1,34 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="INFO">
-  <Appenders>
-    <Console name="Console" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d{HH:mm:ss.S} [Thread: %t] [%l] %-5level: %msg%n" />
-    </Console>
+    <!-- Comentar si no se desea especificar una ruta para el archivo log. Por defecto lo crea en el raiz del proyecto. -->
+    <!-- Si se comenta, en los bloques "File" y "RollingFile" se debe cambiar el fileName a: fileName="file.log"  -->
+    <Properties>
+        <Property name="logPath">logs</Property>
+    </Properties>
     
-    <!-- Descomentar este bloque para generacion de log en archivo -->
-    <File name="MyFile" fileName="messengerChatKallCliente.log" immediateFlush="true" append="false">
-        <PatternLayout pattern="%d{yyy-MM-dd HH:mm:ss.SSS} [Thread: %t] [%l] %-5level: %msg%n"/>
-    </File>
-    
-  </Appenders>
+    <Appenders>
+      <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{HH:mm:ss.S} [Thread: %t] [%l] %-5level: %msg%n" />
+      </Console>
+
+      <!-- 
+          Hay 2 tipos de archivos de salida: (Comentar/Descomentar el bloque que se desee)
+          1. File: Se genera un solo archivo log.
+          2. RollingFile: Se generan varios archivos logs segus el criterio especificado
+      -->
+      <!--
+      <File name="MyFile" fileName="${logPath}/file.log" immediateFlush="true" append="true">
+          <PatternLayout pattern="%d{yyy-MM-dd HH:mm:ss.SSS} [Thread: %t] [%l] %-5level: %msg%n"/>
+      </File>
+      -->
+
+      <RollingFile name="MyRollingFile" fileName="${logPath}/messengerChatWeb.log" filePattern="${logPath}/messengerChatWeb_n%i-%d{yyyy-MM-dd}.log">
+          <PatternLayout>
+              <pattern>%d{yyy-MM-dd HH:mm:ss.SSS} [Thread: %t] [%l] %-5level: %msg%n</pattern>
+          </PatternLayout>
+          <Policies>
+              <!-- Si el archivo log llega a 100 MB, entonces se gerena un nuevo archivo -->
+              <SizeBasedTriggeringPolicy size="100 MB" />
+
+              <!-- Se genera un nuevo archivo segun la menor unidad de tiempo definida en el filePattern. En este caso se genera un log cada minuto. -->
+              <!-- Si se quiere que genere un log diario, entonces cambiar a: filePattern="${logPath}/rollingFile_n%i-%d{yyyy-MM-dd}.log -->
+              <TimeBasedTriggeringPolicy />
+          </Policies>
+      </RollingFile> 
+
+    </Appenders>
   <Loggers>
       <!-- Cada bloque activa los logs de error, info y debug respectivamente. Comentar el bloque que se desee NO aparezca en los logs  -->
       <!-- Descomentar la linea comentada si se desea que ese level de error se imprima en el archivo .log -->
     <Root level="error">
       <AppenderRef ref="Console"/>
-      <AppenderRef ref="MyFile"/>
+      <!--<AppenderRef ref="MyFile"/>-->
+      <AppenderRef ref="MyRollingFile"/>
     </Root>
     <Root level="info">
       <AppenderRef ref="Console"/>
-      <AppenderRef ref="MyFile"/>
+      <!--<AppenderRef ref="MyFile"/>-->
+      <AppenderRef ref="MyRollingFile"/>
     </Root>
     <Root level="debug">
       <AppenderRef ref="Console"/>
-      <AppenderRef ref="MyFile"/>
+      <!--<AppenderRef ref="MyFile"/>-->
+      <AppenderRef ref="MyRollingFile"/>
     </Root>
     <Root level="trace">
       <AppenderRef ref="Console"/>
-      <AppenderRef ref="MyFile"/>
+      <!--<AppenderRef ref="MyFile"/>-->
+      <AppenderRef ref="MyRollingFile"/>
     </Root>
   </Loggers>
 </Configuration>
