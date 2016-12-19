@@ -43,7 +43,6 @@ public final class Servidor {
                         Contactos contactos = new Contactos(socketAux, direccion_ip, id_final_usuario, puertoRemoto);
                         mapContactos.put(id_final_usuario, contactos);
                         insertarSesionUsuario(direccion_ip, puertoRemoto);
-                        logger.info("Nuevo cliente agregado: " + id_final_usuario);
                     }
                 }
             } catch (Exception ex) {
@@ -72,7 +71,7 @@ public final class Servidor {
     }
 
     public void insertarSesionUsuario(String direccion_ip_usuario, String puerto_usuario) {
-        logger.debug("Insertando session: " + direccion_ip_usuario + ", " + puerto_usuario);
+        logger.debug("Insertando nueva sesion en sesion_chat: " + direccion_ip_usuario + ", " + puerto_usuario);
         Conexion con = new Conexion();
         try {
             con.conectar();

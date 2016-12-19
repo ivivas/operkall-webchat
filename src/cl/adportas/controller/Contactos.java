@@ -113,7 +113,7 @@ public final class Contactos {
                                     int cont = 0;
                                     while (id_ejecutivoACD.equals("-1") && cont < 30) {
                                         cont++;
-                                        enviarMensajes("Por favor, espere mientras un ejecutivo est&aacute; disponible.");
+                                        enviarMensajes("Por favor, espere mientras un ejecutivo est&eacute; disponible.");
 //                                            id_usuarioACD = buscarEjecutivoDisponibleParaChat();
                                         Conexion conAuxACD = new Conexion();
                                         try {
@@ -157,9 +157,12 @@ public final class Contactos {
                                         eliminarSocketDeServidor();
                                     }
                                 }
+                                // Mensaje del ejecutivo web al cliente web
                                 else if (textoRecibido.startsWith("textoclientewebejecutivo")) {
                                     String[] cadena = textoRecibido.split("_#_");
+                                    //String id_usuario_receptor = id_ejecutivoACD;
                                     String id_usuario_receptor = cadena[1] != null ? cadena[1].trim() : "-1";
+                                    logger.debug("id_usuario_receptor: " + id_usuario_receptor);
                                     if (cadena != null && cadena.length > 1) {
                                         if (Servidor.mapContactos.containsKey(id_usuario_receptor)) {
                                             Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_receptor);
@@ -169,9 +172,11 @@ public final class Contactos {
                                         }
                                     }
                                 }
+                                // Mensaje del cliente web al ejecutivo
                                 else if (textoRecibido.startsWith("textoclienteweb")) {
                                     String[] cadena = textoRecibido.split("_#_");
                                     String id_usuario_receptor = id_ejecutivoACD;
+                                    logger.debug("id_usuario_receptor: " + id_usuario_receptor);
                                     if (cadena != null && cadena.length > 1) {
                                         String mensaje = cadena[1];
                                         enviarMensaje(id_usuario_receptor, "textoclienteweb", mensaje);
@@ -180,20 +185,32 @@ public final class Contactos {
                                 else if (textoRecibido.startsWith("finalizartextoclienteweb") || textoRecibido.startsWith("finConexionClienteWeb")) {//Cerrar Socket Web (Ejecutivo/ClienteWeb)
                                     logger.debug("Finalizando chat clienteWeb - Ejecutivo.");
                                     String[] cadena = textoRecibido.split("_#_");
-                                    String id_usuario_receptor = id_ejecutivoACD;
-                                    String id_usuario_final_socket = null;
-                                    
+                                    String id_usuario_receptor = "";
+                                    String id_usuario_final_socket = "";
+                                    Contactos contacts = null;
+                                    String prefijo = cadena[0];
+                                    String mensaje = "";
                                     if (cadena != null && cadena.length > 1) {
-                                        if (textoRecibido.startsWith("finalizartextoclienteweb")) {
-                                            id_usuario_final_socket = cadena[1] != null ? cadena[1].trim() : "-1";
+                                        // Si el chat es finalizado por parte del ejecutivo:
+                                        id_usuario_final_socket = cadena[1] != null ? cadena[1].trim() : "-1";
+                                        if (prefijo.equals("finalizartextoclienteweb")) {
+                                            mensaje = cadena[2];
+                                            if (Servidor.mapContactos.containsKey(id_usuario_final_socket)) {
+                                                contacts = (Contactos) Servidor.mapContactos.get(id_usuario_final_socket);
+                                                contacts.enviarMensajes(mensaje);
+                                            }
+                                            id_usuario_receptor = contacts.id_ejecutivoACD;
+                                            //enviarMensaje(id_usuario_receptor, "finalizartextoclienteweb", mensaje);
                                         }
+                                        // Si el chat es finalizado por parte del cliente web:
                                         else {
-                                            String mensaje = cadena[1];
+                                            id_usuario_receptor = id_ejecutivoACD;
+                                            mensaje = cadena[1];
                                             enviarMensaje(id_usuario_receptor, "finConexionClienteWeb", mensaje);
                                         }
                                         
                                         if (Servidor.mapContactos.containsKey(id_usuario_final_socket)) {
-                                            Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_final_socket);
+                                            contacts = (Contactos) Servidor.mapContactos.get(id_usuario_final_socket);
                                             logger.info("Eliminando Cliente Web: " + id_usuario_final_socket);
                                             contacts.actualizarUsuarioBD("1", "");
                                             contacts.eliminarSocketDeServidor();
@@ -323,7 +340,7 @@ public final class Contactos {
             if (Servidor.mapContactos.containsKey(id_usuario)) {
                 logger.debug("Eliminando " + id_usuario + " del mapContactos");
                 Servidor.mapContactos.remove(id_usuario);
-                eliminarRegistroSession(); //Esta parte la hace actualmente el cliente
+                eliminarRegistroSession(); 
 //                actualizarEstadoUsuario(); //
             }
         } catch (Exception e) {
@@ -448,7 +465,7 @@ public final class Contactos {
     }
 
     public void actualizarUsuarioBD(String estado, String mensaje) {
-        logger.debug("Actualizando tabla usuarios por desconexion. Estado: " + estado + ", IdUsuario: " + id_ejecutivoACD);
+        logger.debug("Actualizando tabla secretaria por desconexion. Estado: " + estado + ", IdUsuario: " + id_ejecutivoACD);
         Conexion con = new Conexion();
         con.conectar();
         con.contruirSQL("update secretaria set estado_chat = " + estado + " , motivo_desconexion_chat = '" + mensaje + "' "
