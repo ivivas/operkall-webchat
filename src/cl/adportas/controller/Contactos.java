@@ -192,7 +192,7 @@ public final class Contactos {
                                             Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_receptor);
                                             buscarMensajeAEscribir(id_usuario_receptor, cadena[2], contacts, 3);
                                             contacts.enviarMensajes(cadena[2]);
-                                            insertarRegistroMensajeChat(cadena[2], id_usuario, "", "", "", "", id_usuario_receptor);
+                                            insertarRegistroMensajeChat(cadena[2], contacts.id_ejecutivoACD, "", "", "", "", id_usuario_receptor);
                                         }
                                     }
                                 }
@@ -421,14 +421,13 @@ public final class Contactos {
         }
     }
 
-    public void insertarRegistroMensajeChat(String mensaje, String id_usuario_emisor, String id_grupo_emisor, String id_cliente_emisor,
-        String id_usuario_receptor, String id_grupo_receptor, String id_cliente_receptor) {
+    public void insertarRegistroMensajeChat(String mensaje, String id_usuario_emisor, String id_grupo_emisor, String id_cliente_emisor, String id_usuario_receptor, String id_grupo_receptor, String id_cliente_receptor) {
         logger.debug("Insertando mensaje en tabla mensaje: " + mensaje);
+        
         Conexion con = new Conexion();
         try {
             con.conectar();
-            con.contruirSQL("insert into mensaje (mensaje, fecha_registro, id_usuario_emisor, id_grupo_emisor, id_cliente_emisor, id_usuario_receptor, id_grupo_receptor, id_cliente_receptor) "
-                    + "values (?,'now()',?,?,?,?,?,?);");
+            con.contruirSQL("insert into mensaje_chat (mensaje, fecha_registro, id_usuario_emisor, id_grupo_emisor, id_cliente_emisor, id_usuario_receptor, id_grupo_receptor, id_cliente_receptor) values (?,now(),?,?,?,?,?,?);");
             con.getPst().setString(1, mensaje);
             con.getPst().setString(2, id_usuario_emisor);
             con.getPst().setString(3, id_grupo_emisor);
@@ -436,6 +435,7 @@ public final class Contactos {
             con.getPst().setString(5, id_usuario_receptor);
             con.getPst().setString(6, id_grupo_receptor);
             con.getPst().setString(7, id_cliente_receptor);
+            con.ejecutarSQL();
         } catch (Exception e) {
             logger.error(e.toString());
         } finally {
