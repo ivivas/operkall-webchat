@@ -108,7 +108,11 @@ public final class Contactos {
                                     //enviarMensajes("Intentando una nueva conexion...");
                                     //generar enlace cliente / ejecutivo Update a la tabla sesion de tipo usuario web
                                     String[] cadena = textoRecibido.split("_#_");
-                                    String nombreUsuarioClienteWeb = cadena[1] != null ? cadena[1].trim() : "-1";
+                                    String nombreClienteWeb = cadena[1] != null ? cadena[1].trim() : "-1";
+                                    String telefonoClienteWeb = cadena[2] != null ? cadena[2].replaceAll("\\s", "") : "-1";
+                                    String correoClienteWeb = cadena[3] != null ? cadena[3].trim() : "-1";
+                                    String ciudadClienteWeb = cadena[4] != null ? cadena[4].trim() : "-1";
+                                    String asuntoClienteWeb = cadena[5] != null ? cadena[5].trim() : "-1";
                                     
                                     int cont = 0;
                                     while (id_ejecutivoACD.equals("-1") && cont < 30) {
@@ -138,7 +142,7 @@ public final class Contactos {
                                         try {
                                             con.conectar();
                                             con.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
-                                            con.getPst().setString(1, nombreUsuarioClienteWeb);
+                                            con.getPst().setString(1, nombreClienteWeb);
                                             con.getPst().setInt(2, 3);
                                             con.getPst().setString(3, direccion_ip);
                                             con.getPst().setString(4, puerto);
@@ -155,6 +159,26 @@ public final class Contactos {
                                         enviarMensajes("No hay ejecutivos disponibles, int&eacute;ntelo m&aacute;s tarde.");
                                         //Cerrar session
                                         eliminarSocketDeServidor();
+                                    }
+                                    
+                                    // Se inserta datos del cliente en tabla clientes_chat
+                                    Conexion con = new Conexion();
+                                    try {
+                                        logger.info("Insertando cliente web en tabla clientes_chat: " + nombreClienteWeb);
+                                        con.conectar();
+                                        con.contruirSQL("insert into clientes_chat (nombre, telefono, correo, ciudad, asunto, fecha_conexion, ip, puerto) values (?, ?, ?, ?, ?, now(), ?, ?)");
+                                        con.getPst().setString(1, nombreClienteWeb);
+                                        con.getPst().setString(2, telefonoClienteWeb);
+                                        con.getPst().setString(3, correoClienteWeb);
+                                        con.getPst().setString(4, ciudadClienteWeb);
+                                        con.getPst().setString(5, asuntoClienteWeb);
+                                        con.getPst().setString(6, direccion_ip);
+                                        con.getPst().setString(7, puerto);
+                                        con.ejecutarSQL();
+                                    } catch (Exception e) {
+                                        logger.error(e.toString());
+                                    } finally {
+                                        con.cerrarConexiones();
                                     }
                                 }
                                 // Mensaje del ejecutivo web al cliente web
