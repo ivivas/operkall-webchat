@@ -36,6 +36,11 @@ public class MensajeController extends HttpServlet {
         SocketUsuarioWeb socketUsuarioWeb = null;
         PrintWriter out = response.getWriter();
         boolean flag = true;
+        String nombreClienteWeb     = (request.getParameter("nombreClienteWeb") == null ? "" : request.getParameter("nombreClienteWeb").trim());
+        String telefonoClienteWeb   = (request.getParameter("telefonoClienteWeb") == null ? "" : request.getParameter("telefonoClienteWeb").trim());
+        String correoClienteWeb     = (request.getParameter("correoClienteWeb") == null ? "" : request.getParameter("correoClienteWeb").trim());
+        String ciudadClienteWeb     = (request.getParameter("ciudadClienteWeb") == null ? "" : request.getParameter("ciudadClienteWeb").trim());
+        String asuntoClienteWeb     = (request.getParameter("asuntoClienteWeb") == null ? "" : request.getParameter("asuntoClienteWeb").trim());
         try {
             if (request.getSession().getAttribute("socketUsuarioWeb") != null) {
                 //logger.debug("socketUsuarioWeb not null");
@@ -44,7 +49,7 @@ public class MensajeController extends HttpServlet {
             else if (request.getParameter("nuevaConexion") != null) {//Recordar cambiar el tipo de solicitud, ya que por sesion a cada rato enviaria una nueva conexion y creara una diferente....
                 logger.debug("Nueva conexion: " + request.getParameter("nombreClienteWeb"));
                 socketUsuarioWeb = new SocketUsuarioWeb(request.getSession().getId());
-                socketUsuarioWeb.enviarMensajes("conexionNuevaClienteWeb_#_" + request.getParameter("nombreClienteWeb"));
+                socketUsuarioWeb.enviarMensajes("conexionNuevaClienteWeb_#_" + nombreClienteWeb + "_#_" + telefonoClienteWeb + "_#_" + correoClienteWeb + "_#_" + ciudadClienteWeb + "_#_" + asuntoClienteWeb);
             }
             else {
                 //logger.debug("Else...");

@@ -116,18 +116,27 @@
                 });
                 
                 $("#btnInicioChat").click(function () {
-                    var nombreClienteWeb = $("#txtNombre").val();
+                    var nombre = $("#txtNombre").val();
+                    var telefono = $("#txtTelefono").val();
+                    var correo = $("#txtCorreo").val();
+                    var ciudad = $("#txtCiudad").val();
+                    var asunto = $("#txtAsunto").val();
 //                    var areaMensajeChatWeb = $("#areaMensajeChat").val();
                     $.ajax({//Comunicación jQuery hacia JSP
                         type: "POST",
                         url: "Mensaje",
-                        data: "nuevaConexion=true" + "&nombreClienteWeb=" + nombreClienteWeb,
+                        data: "nuevaConexion=true" + 
+                              "&nombreClienteWeb=" + nombre +
+                              "&telefonoClienteWeb=" + telefono +
+                              "&correoClienteWeb=" + correo +
+                              "&ciudadClienteWeb=" + ciudad +
+                              "&asuntoClienteWeb=" + asunto,
                         success: function (msg) {
                             $("#areaChat").html(msg);
                             var altoAreaText = document.getElementById('areaChat');
                             $("#areaChat").scrollTop(altoAreaText.scrollHeight);
                             $("#areaMensajeChat").val("");
-                            $("#nombreClienteWeb").val(nombreClienteWeb);
+                            $("#nombreClienteWeb").val(nombre);
                         },
                         error: function (xml, msg) {
                             $("#areaChat").html("Error: " + msg);
