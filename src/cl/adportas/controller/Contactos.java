@@ -74,7 +74,7 @@ public final class Contactos {
                                             conAux.conectar();
                                             conAux.contruirSQL("select * from sesiones_chat where fk_id_usuario in ( "
                                                     + "select id_usuario from grupo_usuario_chat where id_grupo = " + id_grupo_receptor + " "
-                                                    + ") and fk_id_usuario != " + id_usuario_emisor + ";");
+                                                    + ") and fk_id_usuario != " + id_usuario_emisor + " and tipo_sesion = 1" + ";");
                                             conAux.ejecutarSQLBusqueda();
                                             while (conAux.getRs().next()) {
                                                 String direccion_ipAUX = conAux.getRs().getString("direccion_ip") != null ? conAux.getRs().getString("direccion_ip").trim() : "";
