@@ -12,6 +12,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import messengerchatkallservidor.Servidor;
 import org.apache.logging.log4j.LogManager;
 
@@ -181,12 +183,35 @@ public final class Contactos {
                                         con.cerrarConexiones();
                                     }
                                 }
+                                else if (textoRecibido.startsWith("textoejecutivo")) {                               
+                                    String[] cadena = textoRecibido.split("_#_");
+                                    String prefijo = cadena[0] != null ? cadena[0].trim() : "";
+                                    String id_receptor_socket = cadena[1] != null ? cadena[1].trim() : "";
+                                    String id_receptor = cadena[2] != null ? cadena[2].trim() : "";
+                                    String mensaje = cadena[3] != null ? cadena[3].trim() : "";
+                                    
+                                    // Para debug, se imprime el map de contactos
+                                    System.out.println("Servidor.mapContactos:");
+                                    Iterator it = Servidor.mapContactos.entrySet().iterator();
+                                    while (it.hasNext()) {
+                                        Map.Entry e = (Map.Entry)it.next();
+                                        System.out.println(e.getKey() + " " + e.getValue());
+                                    }
+                                    
+                                    if (cadena != null && cadena.length > 1) {
+                                        if (Servidor.mapContactos.containsKey(id_receptor_socket)) {
+                                            Contactos contacts = (Contactos) Servidor.mapContactos.get(id_receptor_socket);
+                                            buscarMensajeAEscribir(id_receptor_socket, mensaje, contacts, 1);
+                                            insertarRegistroMensajeChat(mensaje, id_usuario, "", "", id_receptor_socket, "", "");
+                                            mensaje = "textoejecutivo_#_" + id_receptor + "_#_" + mensaje;
+                                            contacts.enviarMensajes(mensaje);
+                                        }
+                                    }
+                                }
                                 // Mensaje del ejecutivo web al cliente web
                                 else if (textoRecibido.startsWith("textoclientewebejecutivo")) {
                                     String[] cadena = textoRecibido.split("_#_");
-                                    //String id_usuario_receptor = id_ejecutivoACD;
                                     String id_usuario_receptor = cadena[1] != null ? cadena[1].trim() : "-1";
-                                    logger.debug("id_usuario_receptor: " + id_usuario_receptor);
                                     if (cadena != null && cadena.length > 1) {
                                         if (Servidor.mapContactos.containsKey(id_usuario_receptor)) {
                                             Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_receptor);
@@ -257,6 +282,7 @@ public final class Contactos {
                                     }
                                 }
                                 else if (textoRecibido.startsWith("textousuario")) {
+                                    /*
                                     //enviarMensajes("Respuesta desde el servidor: " + direccion_ip + "_" + puerto);
                                     String[] cadena = textoRecibido.split("_#_");
                                     String id_usuario_receptor = cadena[1] != null ? cadena[1].trim() : "-1";
@@ -266,6 +292,7 @@ public final class Contactos {
                                         contacts.enviarMensajes("textousuario_#_" + id_usuario + "_#_" + cadena[2]);
                                         insertarRegistroMensajeChat(cadena[2], id_usuario, "", "", id_usuario_receptor, "", "");
                                     }
+                                            */
                                 }
                             } 
                             else {
