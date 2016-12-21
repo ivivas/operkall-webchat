@@ -190,20 +190,12 @@ public final class Contactos {
                                     String id_receptor = cadena[2] != null ? cadena[2].trim() : "";
                                     String mensaje = cadena[3] != null ? cadena[3].trim() : "";
                                     
-                                    // Para debug, se imprime el map de contactos
-                                    System.out.println("Servidor.mapContactos:");
-                                    Iterator it = Servidor.mapContactos.entrySet().iterator();
-                                    while (it.hasNext()) {
-                                        Map.Entry e = (Map.Entry)it.next();
-                                        System.out.println(e.getKey() + " " + e.getValue());
-                                    }
-                                    
                                     if (cadena != null && cadena.length > 1) {
                                         if (Servidor.mapContactos.containsKey(id_receptor_socket)) {
                                             Contactos contacts = (Contactos) Servidor.mapContactos.get(id_receptor_socket);
                                             buscarMensajeAEscribir(id_receptor_socket, mensaje, contacts, 1);
                                             insertarRegistroMensajeChat(mensaje, id_usuario, "", "", id_receptor_socket, "", "");
-                                            mensaje = "textoejecutivo_#_" + id_receptor + "_#_" + mensaje;
+                                            mensaje = "textoejecutivo_#_" + id_usuario + "_#_" + mensaje;
                                             contacts.enviarMensajes(mensaje);
                                         }
                                     }
