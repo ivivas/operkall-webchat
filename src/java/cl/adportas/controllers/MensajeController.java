@@ -65,7 +65,6 @@ public class MensajeController extends HttpServlet {
                 socketUsuarioWeb.enviarMensajes("conexionNuevaClienteWeb_#_" + nombreClienteWeb + "_#_" + telefonoClienteWeb + "_#_" + correoClienteWeb + "_#_" + ciudadClienteWeb + "_#_" + asuntoClienteWeb);
             }
             else {
-                //Aqui deberia cerrar la sesion
                 request.getSession().invalidate();
                 flag = false;
             }
