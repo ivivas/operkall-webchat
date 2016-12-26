@@ -36,7 +36,7 @@ public class MensajeController extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
         request.setCharacterEncoding("UTF-8");
         
-//        HttpSession sesion = request.getSession();
+        //HttpSession sesion = request.getSession();
         SocketUsuarioWeb socketUsuarioWeb = null;
         PrintWriter out = response.getWriter();
         boolean flag = true;
