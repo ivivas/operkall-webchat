@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -58,10 +61,12 @@ public final class Contactos {
             @Override
             public void run() {
                 try {
-                    brLectura = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    brLectura = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                     while (flag) {
                         try {
-                            String textoRecibido = brLectura.readLine();
+                            // Se leen primero los bytes y luego se hace la conversión a string para que garantizar el despliegue de acentos y caracteres especiales
+                            byte[] bytesRecibidos = brLectura.readLine().getBytes(StandardCharsets.UTF_8);
+                            String textoRecibido = new String(bytesRecibidos);
                             logger.debug("Texto recibido: " + textoRecibido);
                             if (textoRecibido != null) {
                                 if (textoRecibido.startsWith("textogrupal")) {
@@ -183,7 +188,7 @@ public final class Contactos {
                                         con.cerrarConexiones();
                                     }
                                 }
-                                else if (textoRecibido.startsWith("textoejecutivo")) {                               
+                                else if (textoRecibido.startsWith("textoejecutivo")) {                            
                                     String[] cadena = textoRecibido.split("_#_");
                                     String prefijo = cadena[0] != null ? cadena[0].trim() : "";
                                     String id_receptor_socket = cadena[1] != null ? cadena[1].trim() : "";
@@ -200,7 +205,7 @@ public final class Contactos {
                                         }
                                     }
                                 }
-                                // Mensaje del ejecutivo web al cliente web
+                                // Mensaje del ejecutivo al cliente web
                                 else if (textoRecibido.startsWith("textoclientewebejecutivo")) {
                                     String[] cadena = textoRecibido.split("_#_");
                                     String id_usuario_receptor = cadena[1] != null ? cadena[1].trim() : "-1";
@@ -220,6 +225,9 @@ public final class Contactos {
                                     logger.debug("id_usuario_receptor: " + id_usuario_receptor);
                                     if (cadena != null && cadena.length > 1) {
                                         String mensaje = cadena[1];
+                                        //byte[] byteText = mensaje.getBytes(Charset.forName("ISO-8859-1"));
+                                        //String mensajeUtf8 = new String(byteText, UTF_8); 
+                                        //mensaje = java.net.URLDecoder.decode(mensaje, "UTF-8");
                                         enviarMensaje(id_usuario_receptor, "textoclienteweb", mensaje);
                                     }
                                 }
