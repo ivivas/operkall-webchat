@@ -7,6 +7,7 @@ package cl.adportas.controllers;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -32,15 +33,14 @@ public class MensajeController extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        request.setCharacterEncoding("UTF-8");
+        
 //        HttpSession sesion = request.getSession();
         SocketUsuarioWeb socketUsuarioWeb = null;
         PrintWriter out = response.getWriter();
         boolean flag = true;
-        String nombreClienteWeb     = (request.getParameter("nombreClienteWeb") == null ? "" : request.getParameter("nombreClienteWeb").trim());
-        String telefonoClienteWeb   = (request.getParameter("telefonoClienteWeb") == null ? "" : request.getParameter("telefonoClienteWeb").trim());
-        String correoClienteWeb     = (request.getParameter("correoClienteWeb") == null ? "" : request.getParameter("correoClienteWeb").trim());
-        String ciudadClienteWeb     = (request.getParameter("ciudadClienteWeb") == null ? "" : request.getParameter("ciudadClienteWeb").trim());
-        String asuntoClienteWeb     = (request.getParameter("asuntoClienteWeb") == null ? "" : request.getParameter("asuntoClienteWeb").trim());
+        
         try {
             if (request.getSession().getAttribute("socketUsuarioWeb") != null) {
                 //logger.debug("socketUsuarioWeb not null");
@@ -48,43 +48,42 @@ public class MensajeController extends HttpServlet {
             } 
             else if (request.getParameter("nuevaConexion") != null) {//Recordar cambiar el tipo de solicitud, ya que por sesion a cada rato enviaria una nueva conexion y creara una diferente....
                 logger.debug("Nueva conexion: " + request.getParameter("nombreClienteWeb"));
+                
+                // Se hace codificacion a UTF-8 para poder enviar acentos y caracteres especiales a través del socket y que se guarden en BD de forma correcta
+                byte[] bytesNombreClienteWeb = (request.getParameter("nombreClienteWeb") == null ? "".getBytes(UTF_8) : request.getParameter("nombreClienteWeb").trim().getBytes(UTF_8));
+                String nombreClienteWeb = new String(bytesNombreClienteWeb);
+                byte[] bytesTelefonoClienteWeb = (request.getParameter("telefonoClienteWeb") == null ? "".getBytes(UTF_8) : request.getParameter("telefonoClienteWeb").trim().getBytes(UTF_8));
+                String telefonoClienteWeb = new String(bytesTelefonoClienteWeb);
+                byte[] bytesCorreoClienteWeb = (request.getParameter("correoClienteWeb") == null ? "".getBytes(UTF_8) : request.getParameter("correoClienteWeb").trim().getBytes(UTF_8));
+                String correoClienteWeb = new String(bytesCorreoClienteWeb);
+                byte[] bytesCiudadClienteWeb = (request.getParameter("ciudadClienteWeb") == null ? "".getBytes(UTF_8) : request.getParameter("ciudadClienteWeb").trim().getBytes(UTF_8));
+                String ciudadClienteWeb = new String(bytesCiudadClienteWeb);
+                byte[] bytesAsuntoClienteWeb = (request.getParameter("asuntoClienteWeb") == null ? "".getBytes(UTF_8) : request.getParameter("asuntoClienteWeb").trim().getBytes(UTF_8));
+                String asuntoClienteWeb = new String(bytesAsuntoClienteWeb);
+                
                 socketUsuarioWeb = new SocketUsuarioWeb(request.getSession().getId());
                 socketUsuarioWeb.enviarMensajes("conexionNuevaClienteWeb_#_" + nombreClienteWeb + "_#_" + telefonoClienteWeb + "_#_" + correoClienteWeb + "_#_" + ciudadClienteWeb + "_#_" + asuntoClienteWeb);
             }
             else {
-                //logger.debug("Else...");
                 //Aqui deberia cerrar la sesion
                 request.getSession().invalidate();
                 flag = false;
-//                if (suw != null) {
-//                    suw.cerrarSession();
-//                }
-//                response.sendRedirect("index.jsp");
-//                out.println();
-//                out.println("<script type=\"text/javascript\">");
-//                out.println("alert('Su session ha Expirado...');");
-//                out.println("</script>");
-//                response.sendRedirect("inicio");
-                //request.getRequestDispatcher("inicio").forward(request, response);
             }
-
-//            if (suw != null && suw.getMensaje() != null && suw.getMensaje().getSb() != null && suw.getMensaje().getSb().toString().contains("no hay ejecutivos disponibles, intentelo mas tarde")) {
-//                flag = false;
-//                out.println();
-//                out.println("<script type=\"text/javascript\">");
-//                out.println("alert('No hay ejecutivos Disponibles\nIntente mas tarde...');");
-//                out.println("</script>");
-//                response.sendRedirect("inicio");
-//                //request.getRequestDispatcher("inicio").forward(request, response);
-//            }
             if (flag) {
                 if (request.getParameter("areaMensajeChatWeb") != null && !request.getParameter("areaMensajeChatWeb").trim().equalsIgnoreCase("")) {
-                    String textoNuevoMensaje = request.getParameter("nombreClienteWeb") + ": " + request.getParameter("areaMensajeChatWeb").trim();
+                    // Se hace codificacion a UTF-8 para poder enviar acentos y caracteres especiales a través del socket
+                    byte[] bytesMensaje = request.getParameter("areaMensajeChatWeb").getBytes(UTF_8);
+                    String mensaje = new String(bytesMensaje);
+                    byte[] bytesNombreCliente = request.getParameter("nombreClienteWeb").getBytes(UTF_8);
+                    String nombreCliente = new String(bytesNombreCliente);
+                    String textoNuevoMensaje = nombreCliente + ": " + mensaje;
                     socketUsuarioWeb.enviarMensajes("textoclienteweb_#_" + textoNuevoMensaje);
-                    socketUsuarioWeb.getMensaje().escribir(textoNuevoMensaje);
+                    
+                    // El mensaje que se despliega en el area de chat del html no requiere la codificacion anterior, por lo tanto no se utilizas las variables anteriores
+                    socketUsuarioWeb.getMensaje().escribir(request.getParameter("nombreClienteWeb") + ": " + request.getParameter("areaMensajeChatWeb"));
                 }
                 request.getSession().setAttribute("socketUsuarioWeb", socketUsuarioWeb);
-                out.println(socketUsuarioWeb.getMensaje().getSb().toString());
+                out.println(socketUsuarioWeb.getMensaje().getSb());
             }
         } catch (Exception e) {
             logger.error(e.toString());

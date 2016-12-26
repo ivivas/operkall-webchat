@@ -33,9 +33,9 @@ public class inicioController extends HttpServlet {
      */
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-//        HttpSession sesion = request.getSession();
-        //nombreClienteWeb
-        //request.getParameter("nuevaConexion")
+        response.setContentType("text/plain;charset=UTF-8");
+        request.setCharacterEncoding("UTF-8");
+        response.setCharacterEncoding("UTF-8");
         String nombreClienteWeb = request.getParameter("nombreClienteWeb");
         SocketUsuarioWeb socketUsuarioWeb;
         socketUsuarioWeb = request.getSession().getAttribute("socketUsuarioWeb") != null ? (SocketUsuarioWeb) request.getSession().getAttribute("socketUsuarioWeb") : null;

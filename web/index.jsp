@@ -7,7 +7,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <meta charset="utf-8">
+        <meta charset="UTF-8">       
         <title>..:: Messenger Chat Web ::..</title>
         <link href="bootstrap-3.3.7/css/bootstrap.min.css" rel="stylesheet">
         <!-- <link href="bootstrap/css/bootstrap-theme.min.css" rel="stylesheet"> -->
@@ -24,7 +24,7 @@
         </div>
         <div style="width: 1366px; height: 525px; background-color: #f5f5f5; ">
             <center>
-                <form class="form-group" action="inicio" method="post" name="formCliente" id="formCliente" >
+                <form class="form-group" action="inicio" method="post" name="formCliente" id="formCliente">
                     <div style="width: 500px; height: 450px; background-color: #f5f5f5; float: none; " class="panel body" id="divFormulario">
                         <div class="form-group has-success">
                             <label class="control-label" for="inputSuccess1">Complete el formulario para empezar con el chat</label>
@@ -82,8 +82,8 @@
         <script language="javascript"  type="text/javascript" >
             $(document).ready(function () {
                 $("#btnEnviarMensajeChat").click(function () {
-                    var nombreClienteWeb = $("#txtNombre").val();
-                    var areaMensajeChatWeb = $("#areaMensajeChat").val();
+                    var nombreClienteWeb = encodeURIComponent($("#txtNombre").val());
+                    var areaMensajeChatWeb = encodeURIComponent($("#areaMensajeChat").val());
                     $.ajax({//Comunicación jQuery hacia JSP
                         type: "POST",
                         url: "Mensaje",

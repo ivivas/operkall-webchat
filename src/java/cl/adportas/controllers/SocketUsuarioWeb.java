@@ -76,7 +76,7 @@ public final class SocketUsuarioWeb {
         logger.info("Iniciando hilo para socket de lectura de mensajes.");
         Thread leerXat = new Thread(() -> {
             try {
-                brLectura = new BufferedReader(new InputStreamReader(socketEscucha.getInputStream()));
+                brLectura = new BufferedReader(new InputStreamReader(socketEscucha.getInputStream(), "UTF-8"));
                 while (flag) {
                     String textoRecibido = brLectura.readLine();
                     if (textoRecibido != null) {

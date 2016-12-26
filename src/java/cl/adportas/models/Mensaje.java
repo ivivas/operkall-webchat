@@ -4,8 +4,6 @@
  * and open the template in the editor.
  */
 package cl.adportas.models;
-
-import cl.adportas.controllers.MensajeController;
 import org.apache.logging.log4j.LogManager;
 
 /**
@@ -41,7 +39,7 @@ public class Mensaje {
 
     public void escribir(String mensaje) {
         try {
-            this.sb.append(mensaje + "\n");
+            this.sb.append(mensaje).append("\n");
         } catch (Exception e) {
             logger.error(e.toString());
         }
