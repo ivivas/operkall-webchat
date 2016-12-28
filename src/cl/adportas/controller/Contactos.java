@@ -11,12 +11,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import messengerchatkallservidor.Servidor;
 import org.apache.logging.log4j.LogManager;
 
@@ -38,6 +40,7 @@ public final class Contactos {
     boolean flag;
     private String id_ejecutivoACD = "-1";
     private String nombre_ejecutivoACD = "S/A";
+    private HashMap mapPrimerMensajeEjecutivo;
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(Contactos.class);
 
     public Contactos(Socket socket, String direccion_ip, String id_usuario, String puerto) {
@@ -51,10 +54,12 @@ public final class Contactos {
             pwEscritura = new PrintWriter(this.socket.getOutputStream(), true);
             this.mapMensaje = new HashMap();
             this.mapMensajeGrupal = new HashMap();
+            this.mapPrimerMensajeEjecutivo = new HashMap();
         } catch (Exception e) {
             logger.error(e.toString());
         }
     }
+    
 
     public void leerMensajes() {
         Thread leerXat = new Thread(new Runnable() {
@@ -112,8 +117,6 @@ public final class Contactos {
                                     }
                                 }
                                 else if (textoRecibido.startsWith("conexionNuevaClienteWeb")) {
-                                    //enviarMensajes("Intentando una nueva conexion...");
-                                    //generar enlace cliente / ejecutivo Update a la tabla sesion de tipo usuario web
                                     String[] cadena = textoRecibido.split("_#_");
                                     String nombreClienteWeb = cadena[1] != null ? cadena[1].trim() : "-1";
                                     String telefonoClienteWeb = cadena[2] != null ? cadena[2].replaceAll("\\s", "") : "-1";
@@ -122,10 +125,9 @@ public final class Contactos {
                                     String asuntoClienteWeb = cadena[5] != null ? cadena[5].trim() : "-1";
                                     
                                     int cont = 0;
-                                    while (id_ejecutivoACD.equals("-1") && cont < 30) {
+                                    while (id_ejecutivoACD.equals("-1") && cont < 10) {
                                         cont++;
-                                        enviarMensajes("Por favor, espere mientras un ejecutivo est&eacute; disponible.");
-//                                            id_usuarioACD = buscarEjecutivoDisponibleParaChat();
+                                        enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
                                         Conexion conAuxACD = new Conexion();
                                         try {
                                             conAuxACD.conectar();
@@ -144,8 +146,11 @@ public final class Contactos {
 
                                     }
                                     if (!id_ejecutivoACD.equals("-1") && !nombre_ejecutivoACD.equals("S/A")) {
+                                        enviarMensajes("Gracias por esperar.");
+                                        enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
+                                        
+                                        // Se actualiza el estado = 1 en la tabla sesiones_chat para el ejecutivo
                                         Conexion con = new Conexion();
-//                                    String id_usuarioACD = "-1";
                                         try {
                                             con.conectar();
                                             con.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
@@ -154,15 +159,13 @@ public final class Contactos {
                                             con.getPst().setString(3, direccion_ip);
                                             con.getPst().setString(4, puerto);
                                             con.ejecutarSQL();
-                                            //enviarMensajes("Conectado: " + direccion_ip + "_" + puerto);
-                                            enviarMensajes("Gracias por esperar.");
-                                            enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
                                         } catch (Exception e) {
                                             logger.error(e.toString());
                                         } finally {
                                             con.cerrarConexiones();
                                         }
-                                    } else {
+                                    } 
+                                    else {
                                         enviarMensajes("No hay ejecutivos disponibles, int&eacute;ntelo m&aacute;s tarde.");
                                         //Cerrar session
                                         eliminarSocketDeServidor();
@@ -172,15 +175,23 @@ public final class Contactos {
                                     Conexion con = new Conexion();
                                     try {
                                         logger.info("Insertando cliente web en tabla clientes_chat: " + nombreClienteWeb);
+                                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+                                        
+                                        // Fecha y hora actual
+                                        Date date = new Date();
+                                        Timestamp tsActual = new Timestamp(date.getTime());
+                                        //System.out.println(sdf.format(cal1.getTime()) );
+                                        
                                         con.conectar();
-                                        con.contruirSQL("insert into clientes_chat (nombre, telefono, correo, ciudad, asunto, fecha_conexion, ip, puerto) values (?, ?, ?, ?, ?, now(), ?, ?)");
+                                        con.contruirSQL("insert into clientes_chat (nombre, telefono, correo, ciudad, asunto, fecha_conexion, ip, puerto) values (?, ?, ?, ?, ?, ?, ?, ?)");
                                         con.getPst().setString(1, nombreClienteWeb);
                                         con.getPst().setString(2, telefonoClienteWeb);
                                         con.getPst().setString(3, correoClienteWeb);
                                         con.getPst().setString(4, ciudadClienteWeb);
                                         con.getPst().setString(5, asuntoClienteWeb);
-                                        con.getPst().setString(6, direccion_ip);
-                                        con.getPst().setString(7, puerto);
+                                        con.getPst().setTimestamp(6, tsActual);
+                                        con.getPst().setString(7, direccion_ip);
+                                        con.getPst().setString(8, puerto);
                                         con.ejecutarSQL();
                                     } catch (Exception e) {
                                         logger.error(e.toString());
@@ -188,7 +199,8 @@ public final class Contactos {
                                         con.cerrarConexiones();
                                     }
                                 }
-                                else if (textoRecibido.startsWith("textoejecutivo")) {                            
+                                // Mensaje de un ejecutivo a otro ejecutivo
+                                else if (textoRecibido.startsWith("textoejecutivo")) {                      
                                     String[] cadena = textoRecibido.split("_#_");
                                     String prefijo = cadena[0] != null ? cadena[0].trim() : "";
                                     String id_receptor_socket = cadena[1] != null ? cadena[1].trim() : "";
@@ -214,7 +226,10 @@ public final class Contactos {
                                             Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_receptor);
                                             buscarMensajeAEscribir(id_usuario_receptor, cadena[2], contacts, 3);
                                             contacts.enviarMensajes(cadena[2]);
-                                            insertarRegistroMensajeChat(cadena[2], contacts.id_ejecutivoACD, "", "", "", "", id_usuario_receptor);
+                                            insertarRegistroMensajeChat(cadena[2], contacts.id_ejecutivoACD, "", "", "", "", id_usuario_receptor);                                            
+                                            if (mapPrimerMensajeEjecutivo.get(id_usuario_receptor) == null) {
+                                                actualizarTablaClientesChat(id_usuario_receptor, contacts.id_ejecutivoACD);
+                                            }
                                         }
                                     }
                                 }
@@ -222,12 +237,8 @@ public final class Contactos {
                                 else if (textoRecibido.startsWith("textoclienteweb")) {
                                     String[] cadena = textoRecibido.split("_#_");
                                     String id_usuario_receptor = id_ejecutivoACD;
-                                    logger.debug("id_usuario_receptor: " + id_usuario_receptor);
                                     if (cadena != null && cadena.length > 1) {
                                         String mensaje = cadena[1];
-                                        //byte[] byteText = mensaje.getBytes(Charset.forName("ISO-8859-1"));
-                                        //String mensajeUtf8 = new String(byteText, UTF_8); 
-                                        //mensaje = java.net.URLDecoder.decode(mensaje, "UTF-8");
                                         enviarMensaje(id_usuario_receptor, "textoclienteweb", mensaje);
                                     }
                                 }
@@ -281,6 +292,7 @@ public final class Contactos {
                                         nombre_ejecutivoACD = "S/A";
                                     }
                                 }
+                                // Se sustituyó por textoejecutivo (eliminar despues de las pruebas)
                                 else if (textoRecibido.startsWith("textousuario")) {
                                     /*
                                     //enviarMensajes("Respuesta desde el servidor: " + direccion_ip + "_" + puerto);
@@ -367,14 +379,63 @@ public final class Contactos {
 //            return mensajeAux;
         }
     }
+
+    /**
+     * Método para actualizar la tabla clientes_chat cuando el ejecutivo responde por primera vez al cliente web.
+     * Calcula el tiempo de espera del cliente y lo inserta en la tabla. También 
+     * inserta el id del ejecutivo con el cual el cliente está chateando.
+     * 
+     * @param id_clienteWeb
+     * @param idEjecutivo
+     */
+    public void actualizarTablaClientesChat(String id_clienteWeb, String idEjecutivo) {
+        logger.debug("Actualizando tabla clientes_chat");
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+            String[] cadena = id_clienteWeb.split("_");
+            String ipAux = cadena[0];
+            String puertoAux = cadena[1];
+            
+            // Se obtiene la fecha de conexion del cliente web para calcular el tiempo de espera.
+            Conexion con = new Conexion();
+            con.conectar();
+            con.contruirSQL("select fecha_conexion from clientes_chat where ip = '" + ipAux + "' and puerto = '" + puertoAux + "';");
+            con.ejecutarSQLBusqueda();
+            con.getRs().next();
+            String fechaConexion = con.getRs().getString("fecha_conexion");
+            
+            Date parsedDate = dateFormat.parse(fechaConexion);
+            Timestamp timestamp = new java.sql.Timestamp(parsedDate.getTime());
+            long startTimeMilisec = timestamp.getTime();
+            
+            Calendar endTime = Calendar.getInstance();
+            long endTimeMilisec = endTime.getTimeInMillis();
+            
+            double tiempoEsperaMiliseg  = endTimeMilisec - startTimeMilisec;
+            int tiempoEsperaSeg = (int) Math.round(tiempoEsperaMiliseg/1000);
+            
+            // Se actualiza el tiempo de espera y el id del ejecutivo de contraparte para el cliente web correspondiente
+            con.contruirSQL("update clientes_chat set tiempo_espera = " + tiempoEsperaSeg + " , id_ejecutivo_contraparte = '" + idEjecutivo + "' " + "where ip = '" + ipAux + "' and puerto = '" + puertoAux + "';");
+            con.ejecutarSQL();
+            con.cerrarConexiones();
+            
+            mapPrimerMensajeEjecutivo.put(id_clienteWeb, true);
+        }
+        catch (SQLException | ParseException e) {
+            logger.error(e.getMessage());
+        }
+    }
     
+    /**
+     * Método para actualizar la fecha de desconexion en la tabla clientes_chat.
+     * 
+     * @param ip
+     * @param puerto
+     */
     public void actualizarClientesChat(String ip, String puerto) {
         
         // Se actualiza tabla clientes_chat y se agrega tiempo de desconexion
         logger.info("Actualizando fecha de desconexión de cliente web en tabla clientes_chat: " );
-        //String[] cadenaAux = ipPuertoClienteWeb.split("_");
-        //String ipClienteweb = cadenaAux[0];
-        //String puertoClienteweb = cadenaAux[1];
 
         Conexion con = new Conexion();
         try {
