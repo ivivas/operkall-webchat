@@ -16,9 +16,13 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import messengerchatkallservidor.Servidor;
 import org.apache.logging.log4j.LogManager;
 
@@ -41,6 +45,10 @@ public final class Contactos {
     private String id_ejecutivoACD = "-1";
     private String nombre_ejecutivoACD = "S/A";
     private HashMap mapPrimerMensajeEjecutivo;
+    private Timer timer;
+    private List ejecutivosDisponibles;
+    private int algoritmoReconexion;
+    private int segundosDeEsperaMaximo;
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(Contactos.class);
 
     public Contactos(Socket socket, String direccion_ip, String id_usuario, String puerto) {
@@ -55,12 +63,15 @@ public final class Contactos {
             this.mapMensaje = new HashMap();
             this.mapMensajeGrupal = new HashMap();
             this.mapPrimerMensajeEjecutivo = new HashMap();
+            this.timer = new Timer();
+            this.ejecutivosDisponibles = new ArrayList();
+            this.algoritmoReconexion = 1;
+            this.segundosDeEsperaMaximo = 30;
         } catch (Exception e) {
             logger.error(e.toString());
         }
     }
     
-
     public void leerMensajes() {
         Thread leerXat = new Thread(new Runnable() {
             @Override
@@ -124,52 +135,8 @@ public final class Contactos {
                                     String ciudadClienteWeb = cadena[4] != null ? cadena[4].trim() : "-1";
                                     String asuntoClienteWeb = cadena[5] != null ? cadena[5].trim() : "-1";
                                     
-                                    int cont = 0;
-                                    while (id_ejecutivoACD.equals("-1") && cont < 10) {
-                                        cont++;
-                                        enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
-                                        Conexion conAuxACD = new Conexion();
-                                        try {
-                                            conAuxACD.conectar();
-                                            conAuxACD.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id, nombre");
-                                            conAuxACD.ejecutarSQLBusqueda();
-                                            while (conAuxACD.getRs().next()) {
-                                                id_ejecutivoACD = conAuxACD.getRs().getInt("id") + "";
-                                                nombre_ejecutivoACD = conAuxACD.getRs().getString("nombre") != null ? conAuxACD.getRs().getString("nombre").trim() : "S/A";
-                                            }
-                                        } catch (Exception e) {
-                                            logger.error(e.toString());
-                                        } finally {
-                                            conAuxACD.cerrarConexiones();
-                                            Thread.sleep(5000);
-                                        }
-
-                                    }
-                                    if (!id_ejecutivoACD.equals("-1") && !nombre_ejecutivoACD.equals("S/A")) {
-                                        enviarMensajes("Gracias por esperar.");
-                                        enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
-                                        
-                                        // Se actualiza el estado = 1 en la tabla sesiones_chat para el ejecutivo
-                                        Conexion con = new Conexion();
-                                        try {
-                                            con.conectar();
-                                            con.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
-                                            con.getPst().setString(1, nombreClienteWeb);
-                                            con.getPst().setInt(2, 3);
-                                            con.getPst().setString(3, direccion_ip);
-                                            con.getPst().setString(4, puerto);
-                                            con.ejecutarSQL();
-                                        } catch (Exception e) {
-                                            logger.error(e.toString());
-                                        } finally {
-                                            con.cerrarConexiones();
-                                        }
-                                    } 
-                                    else {
-                                        enviarMensajes("No hay ejecutivos disponibles, int&eacute;ntelo m&aacute;s tarde.");
-                                        //Cerrar session
-                                        eliminarSocketDeServidor();
-                                    }
+                                    llenarListaEjecutivosDisponibles();
+                                    conectarClientewebConEjecutivo(nombreClienteWeb);
                                     
                                     // Se inserta datos del cliente en tabla clientes_chat
                                     Conexion con = new Conexion();
@@ -198,6 +165,51 @@ public final class Contactos {
                                     } finally {
                                         con.cerrarConexiones();
                                     }
+                                    
+                                    /**
+                                     * Este timer chequea cada 30 segundos (esto debe ser configurable) si el ejecutivo respondió al cliente web, si no respondió, busca otro ejecutivo. 
+                                     * Cuando el ejecutivo responde, la tabla clientes_chat se actualiza y se insertan el id del ejecutivo 
+                                     * de contraparte y el tiempo de espera del cliente web.
+                                     */
+                                    TimerTask task = new TimerTask() {
+                                        String ipCliente = direccion_ip;
+                                        String puertoCliente = puerto;
+                                        String id_usuario_receptor = ipCliente + "_" + puertoCliente;
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                con.conectar();
+                                                con.contruirSQL("select id_ejecutivo_contraparte from clientes_chat where ip = ? and puerto = ?");
+                                                con.getPst().setString(1, ipCliente);
+                                                con.getPst().setString(2, puertoCliente);
+                                                con.ejecutarSQLBusqueda();
+                                                con.getRs().next();
+                                                String idEjecutivo = con.getRs().getString("id_ejecutivo_contraparte") == null ? "" : con.getRs().getString("id_ejecutivo_contraparte").trim();
+                                                if (idEjecutivo.equals("")) {
+                                                    logger.info("Ejecutivo no responde. Reconectando con otro agente");
+                                                    enviarMensajes("Ejecutivo no responde. Reconectando con otro agente");
+                                                    ejecutivosDisponibles.remove(id_ejecutivoACD);
+                                                    actualizarUsuarioBD("1", "");
+                                                    id_ejecutivoACD = "-1";
+                                                    nombre_ejecutivoACD = "S/A";
+                                                    conectarClientewebConEjecutivo(nombreClienteWeb);
+                                                }
+                                                else {
+                                                    logger.info("Ejecutivo respondió. Se cancela el timer");
+                                                    this.cancel();  
+                                                }
+                                            }
+                                            catch (SQLException | NumberFormatException e) {
+                                                logger.error(e.getMessage());
+                                            }
+                                            finally {
+                                                con.cerrarConexiones();
+                                            }
+                                         }
+                                    };
+                                    timer.scheduleAtFixedRate(task, segundosDeEsperaMaximo*1000, segundosDeEsperaMaximo*1000);
+                                    
+                                    
                                 }
                                 // Mensaje de un ejecutivo a otro ejecutivo
                                 else if (textoRecibido.startsWith("textoejecutivo")) {                      
@@ -221,15 +233,16 @@ public final class Contactos {
                                 else if (textoRecibido.startsWith("textoclientewebejecutivo")) {
                                     String[] cadena = textoRecibido.split("_#_");
                                     String id_usuario_receptor = cadena[1] != null ? cadena[1].trim() : "-1";
-                                    if (cadena != null && cadena.length > 1) {
-                                        if (Servidor.mapContactos.containsKey(id_usuario_receptor)) {
-                                            Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_receptor);
-                                            buscarMensajeAEscribir(id_usuario_receptor, cadena[2], contacts, 3);
-                                            contacts.enviarMensajes(cadena[2]);
-                                            insertarRegistroMensajeChat(cadena[2], contacts.id_ejecutivoACD, "", "", "", "", id_usuario_receptor);                                            
-                                            if (mapPrimerMensajeEjecutivo.get(id_usuario_receptor) == null) {
-                                                actualizarTablaClientesChat(id_usuario_receptor, contacts.id_ejecutivoACD);
-                                            }
+                                    String mensaje = cadena[2];
+                                    if (Servidor.mapContactos.containsKey(id_usuario_receptor)) {
+                                        Contactos contacts = (Contactos) Servidor.mapContactos.get(id_usuario_receptor);
+                                        buscarMensajeAEscribir(id_usuario_receptor, mensaje, contacts, 3);
+                                        contacts.enviarMensajes(mensaje);
+                                        insertarRegistroMensajeChat(mensaje, contacts.id_ejecutivoACD, "", "", "", "", id_usuario_receptor);
+
+                                        // Se busca en el hashmap si el ejecutivo ya respondió al cliente web por primera vez
+                                        if (mapPrimerMensajeEjecutivo.get(id_usuario_receptor) == null) {
+                                            actualizarTablaClientesChat(id_usuario_receptor, contacts.id_ejecutivoACD);
                                         }
                                     }
                                 }
@@ -279,18 +292,15 @@ public final class Contactos {
                                     String id_usuario_receptor = "";
                                     String nombreClienteWeb = "";
                                     
-                                    if (cadena != null && cadena.length > 1) {
-                                        id_usuario_receptor = id_ejecutivoACD;
-                                        nombreClienteWeb = cadena[1];
-                                        enviarMensaje(id_usuario_receptor, "finConexionClienteWeb", nombreClienteWeb);
-                                        
-                                        actualizarClientesChat(direccion_ip, puerto);
-                                        actualizarUsuarioBD("1", "");
-                                        eliminarSocketDeServidor();
-                                        
-                                        id_ejecutivoACD = "-1";
-                                        nombre_ejecutivoACD = "S/A";
-                                    }
+                                    id_usuario_receptor = id_ejecutivoACD;
+                                    nombreClienteWeb = cadena[1];
+                                    enviarMensaje(id_usuario_receptor, "finConexionClienteWeb", nombreClienteWeb);
+
+                                    actualizarClientesChat(direccion_ip, puerto);
+                                    actualizarUsuarioBD("1", "");
+                                    eliminarSocketDeServidor();
+                                    id_ejecutivoACD = "-1";
+                                    nombre_ejecutivoACD = "S/A";
                                 }
                                 // Se sustituyó por textoejecutivo (eliminar despues de las pruebas)
                                 else if (textoRecibido.startsWith("textousuario")) {
@@ -321,7 +331,7 @@ public final class Contactos {
                                 }
                             }
                         } 
-                        catch (IOException | InterruptedException e) {
+                        catch (IOException e) {
                             logger.error(e.toString());
                             try {
                                 eliminarSocketDeServidor();
@@ -343,6 +353,176 @@ public final class Contactos {
         });
         leerXat.start();
     }
+    
+    /**
+     * Método para llenar la lista de ejecutivos disponibles.
+     * Se utiliza en los algoritmos de reconexión cuando un ejecutivo no responde al cliente web en el tiempo establecido
+     */
+    public void llenarListaEjecutivosDisponibles() {
+        Conexion conexion = new Conexion();
+        int idAux = -1;
+        try {
+            conexion.conectar();
+            conexion.contruirSQL("select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc");
+            conexion.ejecutarSQLBusqueda();
+            ejecutivosDisponibles.clear();
+            while (conexion.getRs().next()) {
+                idAux = conexion.getRs().getInt("id");
+                ejecutivosDisponibles.add(String.valueOf(idAux));
+            }
+        }
+        catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+        finally {
+            conexion.cerrarConexiones();
+        }
+    }
+    
+    /**
+     * Funcion solo para debug
+     */
+    public void imprimirListaEjecutivosDisponibles() {
+        if (ejecutivosDisponibles.size() > 0) {
+            for (Object ejecutivo : ejecutivosDisponibles) {
+                System.out.println("ejecutivo: " + ejecutivo.toString());
+            }
+        }
+        else {
+            System.out.println("Lista vacia");
+        }
+        
+    }
+    
+    /**
+     * Método para conectar el cliente web con un ejecutivo disponible.
+     * 
+     * @param nombreClienteWeb
+     */
+    public void conectarClientewebConEjecutivo(String nombreClienteWeb) {
+        /**
+        * Algoritmo Top-Down:
+        * Se listan los ejecutivos disponibles (ordenados por id), si el actual no contesta, 
+        * reconecta con el siguiente de la lista hasta llegar al final. Si no hay disponibles,
+        * Se envía un mensaje al cliente web notificando que no hay ejecutivos.
+        */
+       if (algoritmoReconexion == 1) {
+            for (Object ejecutivo : ejecutivosDisponibles) {
+                enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
+                Conexion conexion1 = new Conexion();
+                try {
+                    conexion1.conectar();
+                    conexion1.contruirSQL("update secretaria set estado_chat = 2 where id = " + Integer.parseInt(ejecutivo.toString()) + " returning id, nombre");
+                    //conexion2.getPst().setInt(1, Integer.parseInt(ejecutivo.toString()));
+                    conexion1.ejecutarSQLBusqueda();
+                    while (conexion1.getRs().next()) {
+                        id_ejecutivoACD = conexion1.getRs().getInt("id") + "";
+                        nombre_ejecutivoACD = conexion1.getRs().getString("nombre") != null ? conexion1.getRs().getString("nombre").trim() : "S/A";
+                    }
+                }
+                catch (NumberFormatException | SQLException e) {
+                    logger.error(e.getMessage());
+                }
+                finally {
+                    conexion1.cerrarConexiones();
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        logger.error(e.getMessage());
+                    }
+                }
+            }
+            if (ejecutivosDisponibles.size() > 0) {
+                enviarMensajes("Gracias por esperar.");
+                enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
+
+                // Se actualiza el estado = 1 en la tabla sesiones_chat para el ejecutivo
+                Conexion conexion2 = new Conexion();
+                try {
+                    conexion2.conectar();
+                    conexion2.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
+                    conexion2.getPst().setString(1, nombreClienteWeb);
+                    conexion2.getPst().setInt(2, 3);
+                    conexion2.getPst().setString(3, direccion_ip);
+                    conexion2.getPst().setString(4, puerto);
+                    conexion2.ejecutarSQL();
+                } catch (Exception e) {
+                    logger.error(e.toString());
+                } finally {
+                    conexion2.cerrarConexiones();
+                }
+            } 
+            else {
+                enviarMensajes("No hay ejecutivos disponibles, int&eacute;ntelo m&aacute;s tarde.");
+                
+                actualizarClientesChat(direccion_ip, puerto);
+                actualizarUsuarioBD("1", "");
+                eliminarSocketDeServidor();
+                id_ejecutivoACD = "-1";
+                nombre_ejecutivoACD = "S/A";
+            }
+       }
+       else if (algoritmoReconexion == 2) {
+
+       }
+       else if (algoritmoReconexion == 3) {
+
+       }
+        
+        /*
+        int cont = 0;
+        while (id_ejecutivoACD.equals("-1") && cont < 10) {
+            cont++;
+            enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
+            Conexion conAuxACD = new Conexion();
+            try {
+                conAuxACD.conectar();
+                conAuxACD.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id, nombre");
+                conAuxACD.ejecutarSQLBusqueda();
+                while (conAuxACD.getRs().next()) {
+                    id_ejecutivoACD = conAuxACD.getRs().getInt("id") + "";
+                    nombre_ejecutivoACD = conAuxACD.getRs().getString("nombre") != null ? conAuxACD.getRs().getString("nombre").trim() : "S/A";
+                }
+            } catch (Exception e) {
+                logger.error(e.toString());
+            } finally {
+                conAuxACD.cerrarConexiones();
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    logger.error(e.getMessage());
+                }
+            }
+
+        }
+        if (!id_ejecutivoACD.equals("-1") && !nombre_ejecutivoACD.equals("S/A")) {
+            enviarMensajes("Gracias por esperar.");
+            enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
+
+            // Se actualiza el estado = 1 en la tabla sesiones_chat para el ejecutivo
+            Conexion con = new Conexion();
+            try {
+                con.conectar();
+                con.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
+                con.getPst().setString(1, nombreClienteWeb);
+                con.getPst().setInt(2, 3);
+                con.getPst().setString(3, direccion_ip);
+                con.getPst().setString(4, puerto);
+                con.ejecutarSQL();
+            } catch (Exception e) {
+                logger.error(e.toString());
+            } finally {
+                con.cerrarConexiones();
+            }
+        } 
+        else {
+            enviarMensajes("No hay ejecutivos disponibles, int&eacute;ntelo m&aacute;s tarde.");
+            //Cerrar session
+            eliminarSocketDeServidor();
+        }
+        */
+    }
+    
 
     public void buscarMensajeAEscribir(String id_usuario_receptor, String mensaje, Contactos contacts, int tipo) {
         Mensaje mensajeAux = null;
@@ -486,7 +666,7 @@ public final class Contactos {
             if (Servidor.mapContactos.containsKey(id_usuario)) {
                 logger.debug("Eliminando " + id_usuario + " del mapContactos");
                 Servidor.mapContactos.remove(id_usuario);
-                eliminarRegistroSession(); 
+                eliminarRegistroSession();
 //                actualizarEstadoUsuario(); //
             }
         } catch (Exception e) {

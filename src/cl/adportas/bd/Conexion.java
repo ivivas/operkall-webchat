@@ -24,6 +24,12 @@ public class Conexion {
     private PreparedStatement pst;
     private ResultSet rs;
     private static final Logger logger = LogManager.getLogger(Conexion.class);
+    
+    public void Conexion() {
+        this.conexion = null;
+        this.pst = null;
+        this.rs = null;
+    }
 
     public void conectar() {
         try {
