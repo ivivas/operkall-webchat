@@ -16,12 +16,10 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -69,7 +67,7 @@ public final class Contactos {
             this.mapPrimerMensajeEjecutivo = new HashMap();
             this.timer = new Timer();
             this.ejecutivosDisponibles = new LinkedList();
-            this.algoritmoReconexion = 1;
+            this.algoritmoReconexion = 2;
             this.segundosDeEsperaMaximo = 30;
         } catch (Exception e) {
             logger.error(e.toString());
@@ -193,7 +191,7 @@ public final class Contactos {
                                                 if (idEjecutivo.equals("")) {
                                                     logger.info("Ejecutivo no responde. Reconectando con otro agente");
                                                     enviarMensajes("Ejecutivo no responde. Reconectando con otro agente");
-                                                    ejecutivosDisponibles.remove(id_ejecutivoACD);
+                                                    //ejecutivosDisponibles.remove(id_ejecutivoACD);
                                                     actualizarUsuarioBD("1", "");
                                                     id_ejecutivoACD = "-1";
                                                     nombre_ejecutivoACD = "S/A";
@@ -360,7 +358,7 @@ public final class Contactos {
     }
     
     /**
-     * Método para llenar la lista de ejecutivos disponibles.
+     * Método para llenar la lista de ejecutivos disponibles (ordenados por ultima_conexion_chat).
      * Se utiliza en los algoritmos de reconexión cuando un ejecutivo no responde al cliente web en el tiempo establecido
      */
     public void llenarListaEjecutivosDisponibles() {
@@ -405,15 +403,24 @@ public final class Contactos {
      * @param nombreClienteWeb
      */
     public void conectarClientewebConEjecutivo(String nombreClienteWeb) {
+        String ejecutivoActual = "";
         /**
-        * Algoritmo Top-Down:
-        * Se listan los ejecutivos disponibles (ordenados por id), si el actual no contesta, 
-        * reconecta con el siguiente de la lista hasta llegar al final. Si no hay disponibles,
-        * Se envía un mensaje al cliente web notificando que no hay ejecutivos.
+        * Algoritmo Nº1 Top-Down:
+        * Se obtiene (y se extrae) el primer id de la lista y se conecta con ese ejecutivo. 
+        * Si la lista queda vacía, se envía un mensaje al cliente web notificando que no hay ejecutivos.
+        *
+        * Algoritmo Nº2 Circular:
+        * reconecta con el siguiente de la lista hasta llegar al final. 
+        * Luego, vuelve a empezar ya que los ids son insertados de nuevo en la cola
         */
-       if (algoritmoReconexion == 1) {
-            String ejecutivoActual = (String) ejecutivosDisponibles.poll();
-            
+       if ((algoritmoReconexion == 1) || (algoritmoReconexion == 2)) {            
+            if (algoritmoReconexion == 1) {
+                ejecutivoActual = (String) ejecutivosDisponibles.poll();
+            }
+            else if (algoritmoReconexion == 2) {
+                ejecutivoActual = (String) ejecutivosDisponibles.poll();
+                ejecutivosDisponibles.add(ejecutivoActual);
+            }
             enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
             Conexion conexion1 = new Conexion();
             try {
@@ -468,59 +475,6 @@ public final class Contactos {
        else if (algoritmoReconexion == 3) {
 
        }
-        
-        /*
-        int cont = 0;
-        while (id_ejecutivoACD.equals("-1") && cont < 10) {
-            cont++;
-            enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
-            Conexion conAuxACD = new Conexion();
-            try {
-                conAuxACD.conectar();
-                conAuxACD.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id, nombre");
-                conAuxACD.ejecutarSQLBusqueda();
-                while (conAuxACD.getRs().next()) {
-                    id_ejecutivoACD = conAuxACD.getRs().getInt("id") + "";
-                    nombre_ejecutivoACD = conAuxACD.getRs().getString("nombre") != null ? conAuxACD.getRs().getString("nombre").trim() : "S/A";
-                }
-            } catch (Exception e) {
-                logger.error(e.toString());
-            } finally {
-                conAuxACD.cerrarConexiones();
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    logger.error(e.getMessage());
-                }
-            }
-
-        }
-        if (!id_ejecutivoACD.equals("-1") && !nombre_ejecutivoACD.equals("S/A")) {
-            enviarMensajes("Gracias por esperar.");
-            enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
-
-            // Se actualiza el estado = 1 en la tabla sesiones_chat para el ejecutivo
-            Conexion con = new Conexion();
-            try {
-                con.conectar();
-                con.contruirSQL("update sesiones_chat set estado = 1, fk_id_usuario = " + id_ejecutivoACD + ", usuario = ?, tipo_sesion = ? where direccion_ip = ? and puerto = ?;");
-                con.getPst().setString(1, nombreClienteWeb);
-                con.getPst().setInt(2, 3);
-                con.getPst().setString(3, direccion_ip);
-                con.getPst().setString(4, puerto);
-                con.ejecutarSQL();
-            } catch (Exception e) {
-                logger.error(e.toString());
-            } finally {
-                con.cerrarConexiones();
-            }
-        } 
-        else {
-            enviarMensajes("No hay ejecutivos disponibles, int&eacute;ntelo m&aacute;s tarde.");
-            //Cerrar session
-            eliminarSocketDeServidor();
-        }
-        */
     }
     
 
@@ -562,8 +516,8 @@ public final class Contactos {
 
     /**
      * Método para actualizar la tabla clientes_chat cuando el ejecutivo responde por primera vez al cliente web.
-     * Calcula el tiempo de espera del cliente y lo inserta en la tabla. También 
-     * inserta el id del ejecutivo con el cual el cliente está chateando.
+     * Calcula el tiempo de espera del cliente y lo inserta en la tabla. 
+     * También inserta el id del ejecutivo con el cual el cliente está chateando.
      * 
      * @param id_clienteWeb
      * @param idEjecutivo
