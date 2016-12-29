@@ -20,9 +20,13 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import messengerchatkallservidor.Servidor;
 import org.apache.logging.log4j.LogManager;
 
@@ -46,7 +50,7 @@ public final class Contactos {
     private String nombre_ejecutivoACD = "S/A";
     private HashMap mapPrimerMensajeEjecutivo;
     private Timer timer;
-    private List ejecutivosDisponibles;
+    private Queue ejecutivosDisponibles;
     private int algoritmoReconexion;
     private int segundosDeEsperaMaximo;
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(Contactos.class);
@@ -64,7 +68,7 @@ public final class Contactos {
             this.mapMensajeGrupal = new HashMap();
             this.mapPrimerMensajeEjecutivo = new HashMap();
             this.timer = new Timer();
-            this.ejecutivosDisponibles = new ArrayList();
+            this.ejecutivosDisponibles = new LinkedList();
             this.algoritmoReconexion = 1;
             this.segundosDeEsperaMaximo = 30;
         } catch (Exception e) {
@@ -185,6 +189,7 @@ public final class Contactos {
                                                 con.ejecutarSQLBusqueda();
                                                 con.getRs().next();
                                                 String idEjecutivo = con.getRs().getString("id_ejecutivo_contraparte") == null ? "" : con.getRs().getString("id_ejecutivo_contraparte").trim();
+                                                con.cerrarConexiones();
                                                 if (idEjecutivo.equals("")) {
                                                     logger.info("Ejecutivo no responde. Reconectando con otro agente");
                                                     enviarMensajes("Ejecutivo no responde. Reconectando con otro agente");
@@ -196,18 +201,17 @@ public final class Contactos {
                                                 }
                                                 else {
                                                     logger.info("Ejecutivo respondió. Se cancela el timer");
-                                                    this.cancel();  
+                                                    this.cancel();
                                                 }
                                             }
                                             catch (SQLException | NumberFormatException e) {
                                                 logger.error(e.getMessage());
-                                            }
-                                            finally {
-                                                con.cerrarConexiones();
+                                            } catch (Throwable ex) {
+                                                Logger.getLogger(Contactos.class.getName()).log(Level.SEVERE, null, ex);
                                             }
                                          }
                                     };
-                                    timer.scheduleAtFixedRate(task, segundosDeEsperaMaximo*1000, segundosDeEsperaMaximo*1000);
+                                    timer.schedule(task, segundosDeEsperaMaximo*1000, segundosDeEsperaMaximo*1000);
                                     
                                     
                                 }
@@ -242,6 +246,7 @@ public final class Contactos {
 
                                         // Se busca en el hashmap si el ejecutivo ya respondió al cliente web por primera vez
                                         if (mapPrimerMensajeEjecutivo.get(id_usuario_receptor) == null) {
+                                            timer.cancel();
                                             actualizarTablaClientesChat(id_usuario_receptor, contacts.id_ejecutivoACD);
                                         }
                                     }
@@ -407,32 +412,27 @@ public final class Contactos {
         * Se envía un mensaje al cliente web notificando que no hay ejecutivos.
         */
        if (algoritmoReconexion == 1) {
-            for (Object ejecutivo : ejecutivosDisponibles) {
-                enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
-                Conexion conexion1 = new Conexion();
-                try {
-                    conexion1.conectar();
-                    conexion1.contruirSQL("update secretaria set estado_chat = 2 where id = " + Integer.parseInt(ejecutivo.toString()) + " returning id, nombre");
-                    //conexion2.getPst().setInt(1, Integer.parseInt(ejecutivo.toString()));
-                    conexion1.ejecutarSQLBusqueda();
-                    while (conexion1.getRs().next()) {
-                        id_ejecutivoACD = conexion1.getRs().getInt("id") + "";
-                        nombre_ejecutivoACD = conexion1.getRs().getString("nombre") != null ? conexion1.getRs().getString("nombre").trim() : "S/A";
-                    }
-                }
-                catch (NumberFormatException | SQLException e) {
-                    logger.error(e.getMessage());
-                }
-                finally {
-                    conexion1.cerrarConexiones();
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e) {
-                        logger.error(e.getMessage());
-                    }
-                }
+            String ejecutivoActual = (String) ejecutivosDisponibles.poll();
+            
+            enviarMensajes("Buscando ejecutivo disponible. Por favor espere.");
+            Conexion conexion1 = new Conexion();
+            try {
+                conexion1.conectar();
+                conexion1.contruirSQL("update secretaria set estado_chat = 2 where id = " + ejecutivoActual + " returning id, nombre");
+                conexion1.ejecutarSQLBusqueda();
+                conexion1.getRs().next();
+                id_ejecutivoACD = conexion1.getRs().getInt("id") + "";
+                nombre_ejecutivoACD = conexion1.getRs().getString("nombre") != null ? conexion1.getRs().getString("nombre").trim() : "S/A";
+
             }
-            if (ejecutivosDisponibles.size() > 0) {
+            catch (NumberFormatException | SQLException e) {
+                logger.error(e.getMessage());
+            }
+            finally {
+                conexion1.cerrarConexiones();
+            }
+            
+            if (ejecutivoActual != null) {
                 enviarMensajes("Gracias por esperar.");
                 enviarMensajes("Su ejecutivo es: " + nombre_ejecutivoACD);
 

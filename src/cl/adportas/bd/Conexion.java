@@ -49,14 +49,9 @@ public class Conexion {
         }
     }
 
-    public void ejecutarSQLBusqueda() {
-        try {
+    public void ejecutarSQLBusqueda() throws SQLException {
             this.rs = this.pst.executeQuery();
             logger.debug("Query: " + pst.toString());
-        } catch (Exception e) {
-            logger.error(e.toString());
-            logger.debug("Query: " + pst.toString());
-        }
     }
 
     public void ejecutarSQL() {
