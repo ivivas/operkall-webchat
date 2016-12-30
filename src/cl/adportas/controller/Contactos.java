@@ -49,7 +49,7 @@ public final class Contactos {
     private HashMap mapPrimerMensajeEjecutivo;
     private Timer timer;
     private Queue ejecutivosDisponibles;
-    private int algoritmoReconexion;
+    private int algoritmoReasignacion;
     private int segundosDeEsperaMaximo;
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(Contactos.class);
 
@@ -67,7 +67,7 @@ public final class Contactos {
             this.mapPrimerMensajeEjecutivo = new HashMap();
             this.timer = new Timer();
             this.ejecutivosDisponibles = new LinkedList();
-            this.algoritmoReconexion = 2;
+            this.algoritmoReasignacion = 2;
             this.segundosDeEsperaMaximo = 30;
         } catch (Exception e) {
             logger.error(e.toString());
@@ -410,14 +410,13 @@ public final class Contactos {
         * Si la lista queda vacía, se envía un mensaje al cliente web notificando que no hay ejecutivos.
         *
         * Algoritmo Nº2 Circular:
-        * reconecta con el siguiente de la lista hasta llegar al final. 
-        * Luego, vuelve a empezar ya que los ids son insertados de nuevo en la cola
+        * Se obtiene, se extrae y se vuelve a insertar el id del ejecutivo en la cola, de modo que la lista nunca quede vacía.
         */
-       if ((algoritmoReconexion == 1) || (algoritmoReconexion == 2)) {            
-            if (algoritmoReconexion == 1) {
+       if ((algoritmoReasignacion == 1) || (algoritmoReasignacion == 2)) {            
+            if (algoritmoReasignacion == 1) {
                 ejecutivoActual = (String) ejecutivosDisponibles.poll();
             }
-            else if (algoritmoReconexion == 2) {
+            else if (algoritmoReasignacion == 2) {
                 ejecutivoActual = (String) ejecutivosDisponibles.poll();
                 ejecutivosDisponibles.add(ejecutivoActual);
             }
@@ -469,10 +468,7 @@ public final class Contactos {
                 nombre_ejecutivoACD = "S/A";
             }
        }
-       else if (algoritmoReconexion == 2) {
-
-       }
-       else if (algoritmoReconexion == 3) {
+       else if (algoritmoReasignacion == 3) {
 
        }
     }
