@@ -49,7 +49,6 @@ public final class Contactos {
     private HashMap mapPrimerMensajeEjecutivo;
     private Timer timer;
     private Queue ejecutivosDisponibles;
-    private int algoritmoReasignacion;
     private int segundosDeEsperaMaximo;
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(Contactos.class);
 
@@ -67,7 +66,6 @@ public final class Contactos {
             this.mapPrimerMensajeEjecutivo = new HashMap();
             this.timer = new Timer();
             this.ejecutivosDisponibles = new LinkedList();
-            this.algoritmoReasignacion = 2;
             this.segundosDeEsperaMaximo = 30;
         } catch (Exception e) {
             logger.error(e.toString());
@@ -358,15 +356,15 @@ public final class Contactos {
     }
     
     /**
-     * Método para llenar la lista de ejecutivos disponibles (ordenados por ultima_conexion_chat).
-     * Se utiliza en los algoritmos de reconexión cuando un ejecutivo no responde al cliente web en el tiempo establecido
+     * Método para llenar la lista de ejecutivos disponibles (ordenados por fecha_ultimo_chat).
+     * Se utiliza en los algoritmos de reasignacion cuando un ejecutivo no responde al cliente web en el tiempo establecido
      */
     public void llenarListaEjecutivosDisponibles() {
         Conexion conexion = new Conexion();
         int idAux = -1;
         try {
             conexion.conectar();
-            conexion.contruirSQL("select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc");
+            conexion.contruirSQL("select id from secretaria where estado_chat = 1 order by fecha_ultimo_chat asc");
             conexion.ejecutarSQLBusqueda();
             ejecutivosDisponibles.clear();
             while (conexion.getRs().next()) {
@@ -399,24 +397,27 @@ public final class Contactos {
     
     /**
      * Método para conectar el cliente web con un ejecutivo disponible.
+     * Utiliza 2 tipos de algoritmos, ambos usando una lista de ejcutivos ordenados por el tiempo que tienen sin chatear.
+     * Algoritmo Nº1 Top-Down:
+     * Se obtiene (y se extrae) el primer id de la lista y se conecta con ese ejecutivo. 
+     * Si la lista queda vacía, se envía un mensaje al cliente web notificando que no hay ejecutivos.
+     *
+     * Algoritmo Nº2 Circular:
+     * Se obtiene, se extrae y se vuelve a insertar el id del ejecutivo en la cola, de modo que la lista nunca quede vacía.
+     * 
+     * Algoritmo Nº3 Most idle:
+     * (aun sin implementar) debería abarcar los 3 componentes: llamadas, correo y chat. Por ejemplo: si el ejecutivo está
+     * en una llamada, no puede responder un chat o correo. 
      * 
      * @param nombreClienteWeb
      */
     public void conectarClientewebConEjecutivo(String nombreClienteWeb) {
-        String ejecutivoActual = "";
-        /**
-        * Algoritmo Nº1 Top-Down:
-        * Se obtiene (y se extrae) el primer id de la lista y se conecta con ese ejecutivo. 
-        * Si la lista queda vacía, se envía un mensaje al cliente web notificando que no hay ejecutivos.
-        *
-        * Algoritmo Nº2 Circular:
-        * Se obtiene, se extrae y se vuelve a insertar el id del ejecutivo en la cola, de modo que la lista nunca quede vacía.
-        */
-       if ((algoritmoReasignacion == 1) || (algoritmoReasignacion == 2)) {            
-            if (algoritmoReasignacion == 1) {
+       String ejecutivoActual = "";
+       if ((Servidor.algoritmoReasignacion == 1) || (Servidor.algoritmoReasignacion == 2)) {            
+            if (Servidor.algoritmoReasignacion == 1) {
                 ejecutivoActual = (String) ejecutivosDisponibles.poll();
             }
-            else if (algoritmoReasignacion == 2) {
+            else if (Servidor.algoritmoReasignacion == 2) {
                 ejecutivoActual = (String) ejecutivosDisponibles.poll();
                 ejecutivosDisponibles.add(ejecutivoActual);
             }
@@ -468,7 +469,7 @@ public final class Contactos {
                 nombre_ejecutivoACD = "S/A";
             }
        }
-       else if (algoritmoReasignacion == 3) {
+       else if (Servidor.algoritmoReasignacion == 3) {
 
        }
     }
@@ -710,7 +711,7 @@ public final class Contactos {
         Conexion con = new Conexion();
         try {
             con.conectar();
-            con.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by ultima_conexion_chat asc limit 1) returning id");
+            con.contruirSQL("update secretaria set estado_chat = 2 where id in (select id from secretaria where estado_chat = 1 order by fecha_ultimo_chat asc limit 1) returning id");
 //            con.contruirSQL("select id_usuario from usuarios where estado = 1 order by ultima_conexion asc limit 1");
             con.ejecutarSQLBusqueda();
             while (con.getRs().next()) {
@@ -731,7 +732,6 @@ public final class Contactos {
             con.conectar();
             con.contruirSQL("delete from sesiones_chat where direccion_ip = '" + (this.direccion_ip != null ? this.direccion_ip.trim() : "") + "' and puerto = '" + (this.puerto != null ? this.puerto.trim() : "") + "' ;");
             con.ejecutarSQL();
-            //logger.debug("SQL: " + con.getPst().toString());
             con.cerrarConexiones();
         } catch (Exception e) {
             logger.error(e.toString());
@@ -744,8 +744,7 @@ public final class Contactos {
         logger.debug("Actualizando tabla secretaria por desconexion. Estado: " + estado + ", IdUsuario: " + id_ejecutivoACD);
         Conexion con = new Conexion();
         con.conectar();
-        con.contruirSQL("update secretaria set estado_chat = " + estado + " , motivo_desconexion_chat = '" + mensaje + "' "
-                + "where id = " + id_ejecutivoACD + " ;");
+        con.contruirSQL("update secretaria set estado_chat = " + estado + " , motivo_desconexion_chat = '" + mensaje + "', fecha_ultimo_chat = now() " + "where id = " + id_ejecutivoACD + " ;");
         con.ejecutarSQL();
         con.cerrarConexiones();
     }

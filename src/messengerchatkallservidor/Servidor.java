@@ -23,6 +23,7 @@ public final class Servidor {
     private static final int PORT = 9000;
     public static HashMap mapContactos = new HashMap();
     public static HashMap mapMensajes = new HashMap();
+    public static int algoritmoReasignacion = 1;
     private static final Logger logger = LogManager.getLogger(Servidor.class);
 
     public Servidor() {
@@ -93,9 +94,22 @@ public final class Servidor {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
-        //Esta clase nos servira para pre-configurar los parametros del xat
-        new Servidor();
+        
+        // Se leen los argumentos de entrada
+        if (args.length > 0) {
+            for (String arg : args) {
+                if (arg.startsWith("algoritmoReasignacion=")) {
+                    algoritmoReasignacion = Integer.parseInt(arg.substring("algoritmoReasignacion=".length()).replaceAll("\"", ""));
+                    logger.info("Algoritmo de reasignación = " + algoritmoReasignacion);
+                } 
+            } 
+        }
+        else {
+            logger.info("Sin argumentos de entrada. Se utilizarán los valores por defecto");
+            logger.info("Ejemplo de argumentos: algoritmoReasignacion=1");
+        }
+        
+        Servidor servidor1 = new Servidor();
     }
 
 }
